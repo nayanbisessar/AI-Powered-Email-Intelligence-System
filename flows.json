@@ -1,0 +1,175 @@
+[
+    {
+        "id": "ef06fb47d933508f",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "ba50bd041c21ef91",
+        "type": "e-mail in",
+        "z": "ef06fb47d933508f",
+        "name": "COMP3800test",
+        "protocol": "IMAP",
+        "server": "imap.gmail.com",
+        "useSSL": true,
+        "autotls": "never",
+        "port": "993",
+        "authtype": "BASIC",
+        "saslformat": true,
+        "token": "oauth2Response.access_token",
+        "box": "INBOX",
+        "disposition": "Read",
+        "criteria": "UNSEEN",
+        "repeat": "3",
+        "fetch": "auto",
+        "inputs": 0,
+        "x": 180,
+        "y": 220,
+        "wires": [
+            [
+                "127a05450b5bc906"
+            ]
+        ]
+    },
+    {
+        "id": "127a05450b5bc906",
+        "type": "natural-language-understanding",
+        "z": "ef06fb47d933508f",
+        "name": "Natural Language Understanding",
+        "categories": false,
+        "limitcategories": "3",
+        "classifications": false,
+        "classifications-model": "8",
+        "concepts": true,
+        "maxconcepts": "8",
+        "doc-emotion": true,
+        "doc-emotion-target": "",
+        "doc-sentiment": true,
+        "doc-sentiment-target": "",
+        "entity": true,
+        "entity-emotion": false,
+        "entity-sentiment": false,
+        "maxentities": "50",
+        "keyword": true,
+        "keyword-emotion": false,
+        "keyword-sentiment": false,
+        "maxkeywords": "50",
+        "metadata": false,
+        "relation": false,
+        "semantic": false,
+        "semantic-entities": false,
+        "semantic-keywords": false,
+        "maxsemantics": "50",
+        "limittextcharacters": "0",
+        "syntax": false,
+        "syntax-sentences": false,
+        "syntax-tokens-lemma": false,
+        "syntax-tokens-pos": false,
+        "service-endpoint": "https://api.us-south.natural-language-understanding.watson.cloud.ibm.com/instances/ac663a12-c277-4f84-b969-c5e4436bd718",
+        "x": 420,
+        "y": 220,
+        "wires": [
+            [
+                "11f6b65f555b0358"
+            ]
+        ]
+    },
+    {
+        "id": "f867ba7fe5f034d2",
+        "type": "http request",
+        "z": "ef06fb47d933508f",
+        "name": "",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "other",
+                "keyValue": "Authorization",
+                "valueType": "other",
+                "valueValue": ""
+            },
+            {
+                "keyType": "other",
+                "keyValue": "Content-Type",
+                "valueType": "other",
+                "valueValue": "application/json"
+            }
+        ],
+        "x": 810,
+        "y": 220,
+        "wires": [
+            [
+                "553f23d2f6a00f05"
+            ]
+        ]
+    },
+    {
+        "id": "11f6b65f555b0358",
+        "type": "function",
+        "z": "ef06fb47d933508f",
+        "name": "AI Function",
+        "func": "let emailContent = msg.payload;  // Full email content\nlet sentimentScore = msg.features.sentiment.document.score;  // Positive sentiment score\nlet subject = msg.topic;  // Email subject\nlet senderName = msg.header.senderName; // Sender's name\nlet senderEmail = \"\";\nif (msg.header && msg.header.from && Array.isArray(msg.header.from.value) && msg.header.from.value.length > 0) {\n    senderEmail = msg.header.from.value[0].address; //Email address\n}\nlet messages = [\n    {\n        role: \"system\",\n        content: \"You are a impersonating a computer science student named Nayan who is 19 and goes to school at wentworth institute of technology.\"\n    },\n    {\n        role: \"user\",\n        content: `You received an email about \"${subject}\" from ${senderName}, with an email of ${senderEmail} . The sentiment has a score of ${sentimentScore}. The email states: \"${emailContent}\". Please write a complete email response that includes a friendly greeting, directly addresses the sender's questions, provides detailed information, and concludes politely with a sign-off like \"Best regards\" or \"Sincerely\". Ensure the body is at most eight sentences long and use the sentiment number to heavily influnence what the response is. Include ${senderEmail} at the end, for later usage.`\n\n    }\n];\n\n// Construct the JSON payload for OpenAI's API\nmsg.payload = {\n    model: \"gpt-3.5-turbo\",\n    messages: messages,\n    max_tokens: 400,\n    temperature: 0.7,\n    top_p: 1,\n    n: 1,\n    stop: [\"\\n\\n\\n\\n\\n\"]\n};\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 220,
+        "wires": [
+            [
+                "f867ba7fe5f034d2"
+            ]
+        ]
+    },
+    {
+        "id": "553f23d2f6a00f05",
+        "type": "function",
+        "z": "ef06fb47d933508f",
+        "name": "Email Constructor",
+        "func": "let response = JSON.parse(msg.payload);\nlet choices = response[\"choices\"][0];\nlet content = choices[\"message\"];\nlet message = content[\"content\"];\n\n// Split the message into lines\nlet lines = message.split(\"\\n\");\n\n// The first part is the subject\nlet subject = lines[0].trim();\n\n// The body spans from the second line to the second-to-last line (before the email).\nlet body = lines.slice(1, lines.length - 1).join(\"\\n\");\n\n// The last part is the recipient's email address (last line).\nlet to = lines[lines.length - 1].trim();\n\n// Prepare msg.payload for the email node\nmsg.payload = body; // Set the email body\nmsg.topic = subject; // Set the email subject\nmsg.to = to; // Set the recipient email address\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 990,
+        "y": 220,
+        "wires": [
+            [
+                "20e8eb9320927f6b"
+            ]
+        ]
+    },
+    {
+        "id": "20e8eb9320927f6b",
+        "type": "email out",
+        "z": "ef06fb47d933508f",
+        "server": "smtp.gmail.com",
+        "port": "465",
+        "secure": true,
+        "tls": true,
+        "name": "",
+        "dname": "Send",
+        "sendfailedcontrib": "",
+        "messagesentcontrib": "",
+        "x": 1150,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    }
+]
