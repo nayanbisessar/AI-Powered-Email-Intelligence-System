@@ -30,4 +30,4 @@ To implement this project in your system:
 I welcome contributions to this project. If you'd like to get involved, please contact me at nsbisessar@gmail.com.
 
 ## License
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](License).
